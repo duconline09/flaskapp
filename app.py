@@ -7,7 +7,7 @@ from flask_marshmallow import Marshmallow
 app = Flask(__name__)
 
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/flask'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/recap'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 
@@ -15,20 +15,24 @@ db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
 
-class Captions(db.Model):
+class Caption(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100))
-    body = db.Column(db.Text())
-    date = db.Column(db.DateTime, default=datetime.datetime.now())
+    content = db.Column(db.Text())
+    author_id = db.Column(db.Text())
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now())
+    status = db.Column(db.Integer)
+    votes = db.Column(db.Integer)
 
-    def __init__(self, title, body):
-        self.title = title
-        self.body = body
+    def __init__(self, content, author_id, status, votes):
+        self.content = content
+        self.author_id = author_id
+        self.status = status
+        self.votes = votes
 
 
 class CaptionSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'title', 'body', 'date')
+        fields = ('id', 'content', 'author_id', 'date', 'status', 'votes')
 
 
 caption_schema = CaptionSchema()
@@ -36,47 +40,49 @@ captions_schema = CaptionSchema(many=True)
 
 
 @app.route('/')
-@app.route('/get', methods=['GET'])
-def get_captions():  # put application's code here
-    all_captions = Captions.query.all()
+@app.route('/get-all-captions', methods=['GET'])
+def get_all_captions():  # put application's code here
+    all_captions = Caption.query.all()
     results = captions_schema.dump(all_captions)
     return jsonify(results)
 
 
-@app.route('/get/<id>', methods=['GET'])
+@app.route('/get-caption/<id>', methods=['GET'])
 def get_caption(id):
-    caption = Captions.query.get(id)
+    caption = Caption.query.get(id)
     return caption_schema.jsonify(caption)
 
 
-@app.route('/add', methods=['POST'])
+@app.route('/add-caption', methods=['POST'])
 def add_caption():
-    title = request.json['title']
-    body = request.json['body']
+    content = request.json['content']
+    author_id = request.json['author_id']
+    status = 0
+    votes = 0
 
-    captions = Captions(title, body)
-    db.session.add(captions)
+    caption = Caption(content, author_id, status, votes)
+    db.session.add(caption)
     db.session.commit()
-    return caption_schema.jsonify(captions)
+    return caption_schema.jsonify(caption)
 
 
-@app.route('/update/<id>', methods=['PUT'])
+@app.route('/update-caption/<id>', methods=['PUT'])
 def update_caption(id):
-    caption = Captions.query.get(id)
+    caption = Caption.query.get(id)
 
-    title = request.json['title']
-    body = request.json['body']
+    content = request.json['content']
+    author_id = request.json['author_id']
 
-    caption.title = title
-    caption.body = body
+    caption.content = content
+    caption.author_id = author_id
 
     db.session.commit()
     return caption_schema.jsonify(caption)
 
 
-@app.route('/delete/<id>', methods=['DELETE'])
+@app.route('/delete-caption/<id>', methods=['DELETE'])
 def delete_caption(id):
-    caption = Captions.query.get(id)
+    caption = Caption.query.get(id)
 
     db.session.delete(caption)
     db.session.commit()
